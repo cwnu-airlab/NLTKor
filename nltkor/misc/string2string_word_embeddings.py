@@ -49,7 +49,7 @@ except ImportError:
     raise Exception(f"""
     Need to install Libraries, please pip install below libraries
     \t pip install torch
-    \t pip install fasttext
+    \t pip install fasttext-wheel
     Or, use pip install requirement.txt
     \t  pip install -r {file_path}
     """)

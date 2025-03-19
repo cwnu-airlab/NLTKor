@@ -10,6 +10,8 @@ import re
 import abc
 import logging
 import numpy as np
+import chardet
+import _pickle
 from collections import Counter
 
 from . import attributes
@@ -17,6 +19,7 @@ from . import metadata
 from . import config
 from .word_dictionary import WordDictionary
 from .attributes import get_capitalization
+from .utils import PickleConverter
 
 class FileNotFoundException(IOError):
 	"""
@@ -25,13 +28,18 @@ class FileNotFoundException(IOError):
 	"""
 	pass
 
+pickle_converter = PickleConverter()
+
 def load_tag_dict(filename):
 	"""
 	Load a tag dictionary from a file containing one tag
 	per line.
 	"""
 	tag_dict = {}
-	with open(filename, 'rt') as f:
+	with open(filename, 'rb') as f: 
+			raw_data = f.read(1024)
+			detected = chardet.detect(raw_data).get('encoding', 'utf-8')
+	with open(filename, 'rt', encoding = detected) as f:
 		code = 0
 		for tag in f:
 			tag = tag.strip()
@@ -41,67 +49,12 @@ def load_tag_dict(filename):
 	
 	return tag_dict
 
-def _load_morph_lexicon(root, word, data):
-	'''
-	root = dict()
-	...
-	_load_morph_dict(root, u_key, u_data)
-	'''
-	current_dict = root
-	_end = '$$'
-	for letter in word:
-		current_dict = current_dict.setdefault(letter, {})
-	current_dict = current_dict.setdefault(_end, data)
-	return root	
-
 def load_morph_lexicon(filename):
-	"""
-	Load a co user defined morph from a file containing key<tab>patterns per line. 
-	"""
-	morph_dict = {}
-	with open(filename, 'rt') as f:
-		for line in f:
-			if ';;' in line[:2]: continue
-			try:
-				k,v = line.strip().split('\t')
-			except:
-				print('morph lexicon error : ', line)
-			_load_morph_lexicon(morph_dict, k, v)
-	return morph_dict
+	if not os.path.exists(filename):
+		pickle_converter.convert_morph_lexicon(filename)
 
-def load_co_lexicon(filename):
-	"""
-	Load a co pattern from a file containing key<tab>patterns per line. 
-	"""
-	co_morph_dict = {}
-	with open(filename, 'rt') as f:
-		for line in f:
-			if ';;' in line[:2]: continue
-			try:
-				k,v = line.strip().split('\t')
-			except:
-				print(line)
-			if k in co_morph_dict:
-				print("load co morph lexicon : key {} conflict!".format(k))
-			co_morph_dict[k] = v
-	return co_morph_dict
-
-def load_prob_dict(filename):
-	"""
-	"""
-	prob_dict = {}
-	with open(filename, 'rt') as f:
-		for line in f:
-			if ';;' in line[:2]: continue
-			try:
-				k, v = line.rstrip().split('\t')
-			except:
-				print (line)
-			if k in prob_dict:
-				print("load prob dict : key {} conflict!".format(k))
-			prob_dict[k] = float(v)
-	return prob_dict
-
+	with open(filename, 'rb') as f:
+		return _pickle.load(f)
 
 
 def save_tag_dict(filename, tag_dict):
@@ -327,6 +280,12 @@ class TaggerReader(object):
 			
 		self.tag_dict = load_tag_dict(filename)
 
+	def get_os_filename(self, filename):
+		if os.name == "nt":
+			name, ext = os.path.splitext(filename)
+			return f"{name}-win{ext}"
+		return filename
+		
 	def load_morph_lexicon(self, filename=None):
 		"""
 		Load the morph dictionary from the default file and assign
@@ -345,10 +304,14 @@ class TaggerReader(object):
 		"""
 		if filename is None:
 			key = '%s_co_lexicon' % self.task
-			filename = self.md.paths[key]
-			
-		self.co_lexicon = load_co_lexicon(filename)
+			filename = self.get_os_filename(self.md.paths[key])
 
+		if not os.path.exists(filename):
+			raise FileNotFoundError(f"File not found: {filename}")
+
+		with open(filename, 'rb') as f:
+			self.co_lexicon = _pickle.load(f)
+		
 	def load_prob_dict(self, filename=None):
 		"""
 		Load the tag dictionary from the default file and assign
@@ -356,9 +319,13 @@ class TaggerReader(object):
 		"""
 		if filename is None:
 			key = '%s_prob_dict' % self.task
-			filename = self.md.paths[key]
-			
-		self.prob_dict = load_prob_dict(filename)
+			filename = self.get_os_filename(self.md.paths[key])
+		
+		if not os.path.exists(filename):
+			raise FileNotFoundError(f"File not found: {filename}")
+
+		with open(filename, 'rb') as f:
+			self.prob_dict = _pickle.load(f)
 	
 	   
 	def _set_metadata(self, md):
@@ -390,7 +357,10 @@ class TaggerReader(object):
 				raise FileNotFoundException()
 		
 		words = []
-		with open(filename, 'rt') as f:
+		with open(filename, 'rb') as f: 
+			raw_data = f.read(1024)
+			detected = chardet.detect(raw_data).get('encoding', 'utf-8')
+		with open(filename, 'rt', encoding = detected) as f:
 			for word in f:
 				#word = unicode(word, 'utf-8').strip()
 				word = word.strip()
@@ -489,7 +459,7 @@ class TaggerReader(object):
 			# deal with gaps between sizes (i.e., if there are sizes 2, 3, and 5)
 			codes = getattr(attributes.Affix, '%s_codes' % affix)
 			sizes = sorted(codes)
-			
+
 			getter = getattr(attributes.Affix, 'get_%s' % affix)
 			for size in sizes:
 				

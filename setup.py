@@ -4,8 +4,46 @@ from setuptools import setup
 from setuptools import find_packages
 from setuptools import dist
 import os
-dist.Distribution().fetch_build_eggs(['numpy>=1.10'])
+import subprocess
+subprocess.check_call([sys.executable, "-m", "pip", "install", "Cython"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "numpy>=1.23.5,<=1.26.4"])
+from Cython.Build import cythonize
 import numpy as np
+
+try:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "fasttext"])
+    fasttext_package = "fasttext"
+except subprocess.CalledProcessError:
+    fasttext_package = None
+    print("WARNING: `fasttext` installation failed.")
+    print("Try installing `fasttext-wheel` instead: pip install fasttext-wheel")
+
+install_requires=[
+    'Cython',
+    'numpy>=1.23.5,<=1.26.4',
+    'regex',
+    'tqdm>=4.40.0',
+    'joblib',
+    'requests',
+    'nltk > 3.0',
+    'pyarrow',
+    'beautifulSoup4',
+    'faiss-cpu==1.7.3',
+    'datasets',
+    'torch',
+    'dill<0.3.9',
+    'scikit-learn>=0.22.1',
+    'transformers>=4.8.2',
+    'protobuf',
+    'sentencepiece',
+    'pandas',
+    'bert_score',
+    'chardet',
+    'GPUtil'
+    ]
+
+if fasttext_package:
+    install_requires.append(fasttext_package)
 
 def package_files(directory):
     paths = []
@@ -17,38 +55,24 @@ def package_files(directory):
 extra_files = package_files('nltkor/sejong')
 extra_files = extra_files+package_files('nltk_kor/tag')
 
-module1 = Extension("nltkor.tag.libs.network",
-                               ["nltkor/tag/libs/network.c"],
-                               include_dirs=['.', np.get_include()])
+module1 = cythonize([
+    Extension(
+        "nltkor.tag.libs.network",
+        ["nltkor/tag/libs/network.pyx"],
+        include_dirs=['.', np.get_include()]
+    )
+])
+
 
 setup(
   name='nltkor',
-  version='1.2.3',
+  version='1.2.6',
 	url='https://modi.changwon.ac.kr/air_cwnu/nlp_tool/nltk_ko.git',
   packages=find_packages(exclude=[]),
   python_requires='>=3.7',
-  install_requires=[
-    'regex',
-    'tqdm>=4.40.0',
-    'joblib',
-    'numpy==1.23.0',
-    'requests',
-    'nltk > 3.0',
-    'pyarrow ==14.0.0',
-    'beautifulSoup4',
-    'faiss-cpu>=1.7.3',
-    'datasets',
-    'torch',
-    'scikit-learn>=0.22.1',
-    'transformers>=4.8.2',
-    'protobuf',
-    'sentencepiece',
-    'pandas',
-    'bert_score',
-    'fasttext==0.9.2'
-    ],
+  install_requires=install_requires,
   package_data={'': extra_files},
-	ext_modules=[module1],
+	ext_modules=module1,
   include_package_data=True,
 
   tests_require=["pytest"],
