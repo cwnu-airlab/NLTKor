@@ -33,7 +33,7 @@ install_requires=[
     'torch',
     'dill<0.3.9',
     'scikit-learn>=0.22.1',
-    'transformers>=4.8.2',
+    'transformers==4.42.2',
     'protobuf',
     'sentencepiece',
     'pandas',
@@ -66,7 +66,7 @@ module1 = cythonize([
 
 setup(
   name='nltkor',
-  version='1.2.7',
+  version='1.2.8',
 	url='https://modi.changwon.ac.kr/air_cwnu/nlp_tool/nltk_ko.git',
   packages=find_packages(exclude=[]),
   python_requires='>=3.7',
