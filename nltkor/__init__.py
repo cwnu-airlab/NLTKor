@@ -9,8 +9,8 @@ from nltkor import search
 from nltkor import similarity
 from nltkor import tag
 from nltkor import tokenize
-from nltkor import dataloader
-from nltkor.dataloader import dataset
 from nltkor import trans
 from nltkor import Kor_char
 from nltkor import etc
+
+__version__ = '1.2.8'
