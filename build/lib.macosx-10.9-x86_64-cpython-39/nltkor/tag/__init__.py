@@ -68,3 +68,4 @@ For more information, please consult chapter 5 of the NLTK Book.
 from nltkor.tag.espresso_tag import EspressoTagger
 #import nltkor.tag
 from nltkor.tag.libs import taggers
+from .libs import PickleConverter

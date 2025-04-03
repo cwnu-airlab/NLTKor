@@ -4,9 +4,10 @@
 
 | 번호 | 날짜      | 작성자 | 내용             |
 | ---- | --------- | ------ | ---------------- |
-| 1    | 2024.4.1  | 김도원 | NLTKo 1.0.0 공개 |
+| 1    | 2024.4.1  | 김도원 | NLTKo 1.0.0 공개<br> string2string 기능 추가, METEOR Score 추가 |
 | 2    | 2024.5.22 | 차정원 | NLTKo 1.1.0 공개 |
-| 3    | 2025.2.5 | 이예나 | NLTKor 1.2.0 공개 |
+| 3    | 2025.2.5 | 이예나 | NLTKor 1.2.0 공개<br> bleu tensor 추가, entment 추가, accurancy norm 추가 |
+| 4    | 2025.4.3 | 이예나 | NLTKor 1.2.10 업데이트<br> espresso 오류 수정 |
 
 
 
@@ -37,19 +38,20 @@
   - [4.11 is_numConnection(Ch)](#411-is_numconnectionch)
 - [5. 기본 평가 함수들](#5-기본-평가-함수들)
   - [5.1 Accuracy](#51-accuracy)
-  - [5.2 Precision](#52-precision)
-  - [5.3 Recall](#53-recall)
-  - [5.4 F1 score](#54-f1-score)
-  - [5.5 P@k (Precision at k), R@k (Recall ar k)](#55-pk-precision-at-k-rk-recall-ar-k)
-  - [5.6 Hit rate @ k](#56-hit-rate--k)
-  - [5.7 세종형식 품사태깅 결과 평가](#57-세종형식-품사태깅-결과-평가)
-  - [5.8 WER/CER](#58-wercer)
-  - [5.9 BLEU](#59-bleu)
-  - [5.9.1 BLEU for tensor](#591-bleu-for-tensor)
-  - [5.10 ROUGE](#510-rouge)
-  - [5.11 CIDER](#511-cider)
-  - [5.12 METEOR](#512-meteor)
-  - [5.13 EntMent](#513-entment)
+  - [5.2 Accurancy norm](#52-accuracy-norm)
+  - [5.3 Precision](#53-precision)
+  - [5.4 Recall](#54-recall)
+  - [5.5 F1 score](#55-f1-score)
+  - [5.6 P@k (Precision at k), R@k (Recall ar k)](#56-pk-precision-at-k-rk-recall-ar-k)
+  - [5.7 Hit rate @ k](#57-hit-rate--k)
+  - [5.8 세종형식 품사태깅 결과 평가](#58-세종형식-품사태깅-결과-평가)
+  - [5.9 WER/CER](#59-wercer)
+  - [5.10 BLEU](#510-bleu)
+  - [5.10.1 BLEU for tensor](#5101-bleu-for-tensor)
+  - [5.11 ROUGE](#511-rouge)
+  - [5.12 CIDER](#512-cider)
+  - [5.13 METEOR](#513-meteor)
+  - [5.14 EntMent](#514-entment)
 - [6 확장 평가 함수](#6-확장-평가-함수)
   - [6.1 MAUVE](#61-mauve)
   - [6.2 BERT Score](#62-bert-score)
@@ -145,6 +147,18 @@ apt install git
 
 - `apt install pythonx.x-dev` (x.x는 사용자의 python 버전에 맞게 입력)
 - `apt-get install pythonx.x-distutils` (x.x는 사용자의 python 버전에 맞게 입력)
+
+- 만약 설치 도중 해당 에러가 발생한다면
+```h
+× Getting requirements to build wheel did not run successfully.
+│ exit code: 1
+╰─> See above for output.
+```
+
+```h
+pip install wheel
+```
+로 wheel을 먼저 설치해야한다.
 
 <div style="page-break-after: always;"></div>
 
@@ -511,7 +525,96 @@ False
 0.4
 ```
 
-#### 5.2 Precision
+#### 5.2 Accuracy norm
+일반적으로 생성형 모델의 예측 정확도를 정규화(normalization)한 값을 의미한다.
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import time
+import random
+import accuracy_norm
+
+# 모델과 토크나이저 로드
+model_name = 'gpt2-medium'
+model = AutoModelForCausalLM.from_pretrained(model_name).cuda().eval()
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+# HellaSwag 형식의 임의 데이터 생성
+examples = [
+    {
+        "input_text": "The boy threw a frisbee and",
+        "candidates": ["it landed on the roof.", "the dog chased it.", "it broke.", "it disappeared."],
+        "label": 1
+    },
+    {
+        "input_text": "The man started cooking by",
+        "candidates": ["turning on the stove.", "reading a book.", "watching TV.", "taking a nap."],
+        "label": 0
+    },
+    {
+        "input_text": "The girl put on her shoes and",
+        "candidates": ["went for a run.", "started sleeping.", "ate breakfast.", "watched TV."],
+        "label": 0
+    },
+    {
+        "input_text": "The cat jumped onto the table and",
+        "candidates": ["fell asleep.", "knocked over a glass.", "started barking.", "flew away."],
+        "label": 1
+    },
+    {
+        "input_text": "The boy opened the door and saw",
+        "candidates": ["a pizza delivery.", "nothing.", "a spaceship.", "an elephant."],
+        "label": 0
+    },
+    {
+        "input_text": "The woman picked up her phone and",
+        "candidates": ["called her friend.", "ate it.", "threw it away.", "danced."],
+        "label": 0
+    },
+    {
+        "input_text": "After finishing his homework, the student",
+        "candidates": ["went to sleep.", "built a house.", "flew a kite.", "started driving."],
+        "label": 0
+    },
+    {
+        "input_text": "The dog found a stick and",
+        "candidates": ["ran away with it.", "ate the sofa.", "drove a car.", "built a boat."],
+        "label": 0
+    },
+    {
+        "input_text": "She turned off the lights and",
+        "candidates": ["went to bed.", "started cooking.", "went jogging.", "washed her car."],
+        "label": 0
+    },
+    {
+        "input_text": "The chef tasted the soup and",
+        "candidates": ["smiled.", "cried loudly.", "threw it away.", "started singing."],
+        "label": 0
+    }
+]
+
+# 평가 실행 및 결과 출력
+correct = 0
+memory_usages = []
+inference_times = []
+
+for example in examples:
+    cor, metrics = accuracy_norm(model, tokenizer, example["input_text"], example["candidates"], example["label"])
+    correct += cor
+    memory_usages.append(metrics["reserved_memory"])
+    inference_times.append(metrics["inference_time"])
+
+accuracy = correct / len(examples)
+
+print(f"Accuracy: {accuracy * 100:.2f}%")
+print(f"Time: {sum(inference_times)/len(inference_times)}, memory: {sum(memory_usages)/len(memory_usages)}")
+```
+```
+Accuracy: 20.00
+Time: 0.05374705195426941, memory: 1409.9
+```
+
+#### 5.3 Precision
 
 'micro' precision은 'Accuracy'와 같이 $2/5 = 0.4$ 로 계산이 된다.
 'macro' precision은 각 클래스별로 precision을 계산하여 평균을 낸다. 다음 예에서는 'a'=1/2, 'b' = 1/2, 'c' = 0, 'd' = 0. 따라서 1/4 = 0.25가 된다.
@@ -526,7 +629,7 @@ False
 0.25
 ```
 
-#### 5.3 Recall
+#### 5.4 Recall
 
 ```python
 >>> from nltkor.metrics import DefaultMetric
@@ -538,7 +641,7 @@ False
 0.25
 ```
 
-#### 5.4 F1 score
+#### 5.5 F1 score
 
 ```python
 >>> from nltkor.metrics import DefaultMetric
@@ -550,7 +653,7 @@ False
 0.25
 ```
 
-#### 5.5 P@k (Precision at k), R@k (Recall ar k)
+#### 5.6 P@k (Precision at k), R@k (Recall ar k)
 
 ```python
 >>> from nltkor.metrics import DefaultMetric
@@ -562,7 +665,7 @@ False
 0.6666666666666666
 ```
 
-#### 5.6 Hit rate @ k
+#### 5.7 Hit rate @ k
 
 'user', 'h_pred'는 정렬된 이중 리스트 형식이다. 다음 예제에서 k = 3이다. 이 경우에 'h_pred[:k]'까지만 평가한다.
 
@@ -574,7 +677,7 @@ False
 0.25
 ```
 
-#### 5.7 세종형식 품사태깅 결과 평가
+#### 5.8 세종형식 품사태깅 결과 평가
 
 다음 예제와 같은 품사 태깅 결과를 입력하여 성능을 측정한다.
 
@@ -604,7 +707,7 @@ False
 (0.8, 0.8636363636363636, 0.8636363636363636, 0.8636363636363636)
 ```
 
-#### 5.8 WER/CER
+#### 5.9 WER/CER
 
 - wer (단어 오류율) : 두 입력 문장 사이의 단어 오류율 반환
 - cer (음절 오류율) : 두 입력 문장 사이의 문자(음절) 오류율 반환
@@ -628,7 +731,7 @@ False
 0.3333333333333333
 ```
 
-#### 5.9 BLEU
+#### 5.10 BLEU
 
 - bleu_n : bleu-n(1,2,3,4) 스코어 반환
 
@@ -671,7 +774,27 @@ False
 0.4001601601922499
 ```
 
-#### 5.10 ROUGE
+#### 5.10.1 BLEU for tensor
+- 각 score의 값이 tensor 로 반환한다.
+```
+>>> from nltk.translate.bleu_score import *
+>>> from nltko.tokenize import Ko_tokenize
+>>> can=torch.tensor([[1,2,3,4,5],[3,4,5,6,4]])
+>>> ref=torch.tensor([[1,2,3,4,5],[3,5,6,7,10]])
+>>> bleu_tensor(ref,can,1)
+tensor(0.8000)
+>>> bleu_tensor(ref,can,2)
+tensor(0.6250)
+>>> bleu_tensor(ref,can,3)
+tensor(0.5000)
+>>> bleu_tensor(ref,can,4)
+tensor(0.5000)
+>>> bleu_tensor(ref,can)
+tensor(0.5946)
+
+```
+
+#### 5.11 ROUGE
 
 ※ rouge는 recall based score이며 l, s는 f-measure를 사용하며 n은 recall score이다.
 
@@ -725,7 +848,7 @@ False
 0.8275862068965517
 ```
 
-#### 5.11 CIDER
+#### 5.12 CIDER
 
 TF-IDF를 n-gram에 대한 가중치로 계산하고 참조 캡션과 생성 캡션에 대한 유사도를 측정
 
@@ -761,7 +884,7 @@ TF-IDF를 n-gram에 대한 가중치로 계산하고 참조 캡션과 생성 캡
 0.1748041
 ```
 
-#### 5.12 METEOR
+#### 5.13 METEOR
 
 - METEOR (Meter For Evaluation of Translation with Explicit Ordering )
 
@@ -787,7 +910,7 @@ TF-IDF를 n-gram에 대한 가중치로 계산하고 참조 캡션과 생성 캡
 0.6303797468354431
 ```
 
-#### 5.13 EntMent
+#### 5.14 EntMent
 
 - EntMent (Entity Mention Recall)
 

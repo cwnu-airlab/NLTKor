@@ -6,6 +6,7 @@ Base class for reading NLP tagging data.
 """
 
 import os
+import sys
 import re
 import abc
 import logging
@@ -281,9 +282,13 @@ class TaggerReader(object):
 		self.tag_dict = load_tag_dict(filename)
 
 	def get_os_filename(self, filename):
+		name, ext = os.path.splitext(filename)
 		if os.name == "nt":
-			name, ext = os.path.splitext(filename)
 			return f"{name}-win{ext}"
+		elif sys.platform == "darwin":
+			return f"{name}-mac{ext}"
+		elif sys.platform.startswith("linux"):
+			return f"{name}-linux{ext}"
 		return filename
 		
 	def load_morph_lexicon(self, filename=None):
@@ -307,7 +312,7 @@ class TaggerReader(object):
 			filename = self.get_os_filename(self.md.paths[key])
 
 		if not os.path.exists(filename):
-			raise FileNotFoundError(f"File not found: {filename}")
+			raise FileNotFoundError(f"{filename}")
 
 		with open(filename, 'rb') as f:
 			self.co_lexicon = _pickle.load(f)
@@ -322,7 +327,7 @@ class TaggerReader(object):
 			filename = self.get_os_filename(self.md.paths[key])
 		
 		if not os.path.exists(filename):
-			raise FileNotFoundError(f"File not found: {filename}")
+			raise FileNotFoundError(f"{filename}")
 
 		with open(filename, 'rb') as f:
 			self.prob_dict = _pickle.load(f)

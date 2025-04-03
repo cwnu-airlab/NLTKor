@@ -9,8 +9,11 @@ import os, sys
 import logging
 import nltk
 import nltkor
+import _pickle
+import chardet
 #from nltkor import Kor_char
 from nltkor.tokenize import Ko_tokenize
+from nltkor.tag.libs import config
 import numpy as np
 
 #from nltk.tokenize.regexp import RegexpTokenizer
@@ -135,7 +138,6 @@ def clean_kotext(text, correct=False):
 		#text = text.replace(u'…', '...')
 
 		return text
-
 
 
 def generate_feature_vectors(num_vectors, num_features, min_value=-0.1, max_value=0.1):
@@ -342,3 +344,41 @@ def boundaries_to_arg_limits(boundaries):
 						limits.append([start, i])
 
 		return np.array(limits, np.int)
+
+class PickleConverter:
+	"""txt 확장자 사전을 pickle 확장자로 변환"""
+	def __init__(self, morph_pickle=None, co_pickle=None, prob_pickle=None):
+		self.morph_pickle = morph_pickle or config.FILES.get("pos_morph_lexicon")
+
+	def _convert_morph_lexicon(self, root, word, data):
+		'''
+		root = dict()
+		...
+		_convert_morph_dict(root, u_key, u_data)
+		'''
+		current_dict = root
+		_end = '$$'
+		for letter in word:
+			current_dict = current_dict.setdefault(letter, {})
+		current_dict = current_dict.setdefault(_end, data)
+		return root	
+
+	def convert_morph_lexicon(self, filename=None):
+		filename = filename if filename else self.morph_pickle
+		txt_filename = filename.replace('.pickle', '.txt')
+		morph_dict = {} 
+
+		with open(txt_filename, 'rb') as f:
+			raw_data = f.read(1024)
+			detected = chardet.detect(raw_data).get('encoding', 'utf-8')
+		with open(txt_filename, 'rt', encoding=detected) as f:
+			for line in f:
+				if ';;' in line[:2]: continue
+				try:
+					k, v = line.strip().split('\t')
+				except:
+					print('morph lexicon error : ', line)
+				self._convert_morph_lexicon(morph_dict, k, v)
+
+		with open(filename, 'wb') as f:
+			_pickle.dump(morph_dict, f, 2)

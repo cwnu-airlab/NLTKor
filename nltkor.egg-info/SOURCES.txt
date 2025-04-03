@@ -42,8 +42,12 @@ nltkor/sejong/dict_semClassNum.txt
 nltkor/sejong/layer.txt
 nltkor/sejong/sejong_download.py
 nltkor/sejong/ssem.py
+nltkor/sejong/__pycache__/__init__.cpython-38.pyc
 nltkor/sejong/__pycache__/__init__.cpython-39.pyc
+nltkor/sejong/__pycache__/sejong_download.cpython-38.pyc
 nltkor/sejong/__pycache__/sejong_download.cpython-39.pyc
+nltkor/sejong/__pycache__/ssem.cpython-38.pyc
+nltkor/sejong/__pycache__/ssem.cpython-39.pyc
 nltkor/similarity/__init__.py
 nltkor/similarity/bartscore____.py
 nltkor/similarity/bertscore____.py

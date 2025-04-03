@@ -806,7 +806,7 @@ class POSTagger(Tagger):
 						while morph_tags[same_morph] == _m_t_[0][1] or morph_tags[same_morph] in ['JJ']:
 							first_word = morphs[same_morph] + first_word
 							same_morph -= 1
-							if (len(morph_tags)+same_morph)<0: break
+							if (len(morph_tags)+same_morph)<0 or len(morph_tags) == 1 : break
 						prev_word = (morphs[same_morph]+'/'+morph_tags[same_morph]) if (len(morph_tags)+same_morph)>=0 else 'BOS'
 						prev_tag = morph_tags[same_morph] if (len(morph_tags)+same_morph)>=0 else 'BOS'
 						first_word = first_word+'/'+_m_t_[0][1]
@@ -814,10 +814,10 @@ class POSTagger(Tagger):
 						prev_word = m_1+'/'+t_1 # viterbi를 위해서
 						prev_tag = t_1
 						first_word = (_m_t_[0][0]+'/'+_m_t_[0][1])
-
 					first_tag = _m_t_[0][1]
 					last_word = _m_t_[-1][0]+'/'+_m_t_[-1][1]
 					last_tag = _m_t_[-1][1]
+				
 					p = (self.prob_dict[prev_word] if prev_word in self.prob_dict else -100)
 					#print(p)
 					p += (self.prob_dict[prev_tag + '' + first_tag] if prev_tag + '' + first_tag in self.prob_dict else -100) \
@@ -825,12 +825,14 @@ class POSTagger(Tagger):
 						+ (self.prob_dict[last_word] if last_word in self.prob_dict else -100) \
 						+ (self.prob_dict[last_tag + '' + t__1] if last_tag + '' + t__1 in self.prob_dict else -100)
 					#print(p)
+					if '/' in first_word:
+						first_word = first_word.split('/', 1)[0]
 					if p > max_p:
 						max_p = p
 						max_same_morph = same_morph
 						max_list = []
 						for i, (m, t) in enumerate(_m_t_):
-							m = first_word.split('/')[0] if i==0 else m
+							m = first_word if i==0 else m
 							t = first_tag if i==0 else t
 							max_list.append((m,t))
 						#max_list = _m_t_
@@ -857,17 +859,15 @@ class POSTagger(Tagger):
 
 			# ------- 사전에 후보가 2개 이상일 경우 ----------
 			max_list, overlap_idx = get_best_path(l)
-
 			co_morphs = [m for (m,t) in max_list]
 			co_morph_tags = [t for (m,t) in max_list]
 			#print(':::', overlap_idx, morphs, co_morphs)
-			if overlap_idx < 0:
+			if overlap_idx <= 0: #handling of overlapping morphemes
 				morphs = morphs[:overlap_idx] + co_morphs
 				morph_tags = morph_tags[:overlap_idx] + co_morph_tags
 			else:
 				morphs = morphs + co_morphs
 				morph_tags = morph_tags + co_morph_tags
-
 			return morphs, morph_tags
 
 		def get_eojeol_tokens(self, tokens, tags, mode="eojeol"):

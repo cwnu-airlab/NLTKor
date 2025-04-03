@@ -4,6 +4,7 @@
 Class for dealing with POS data.
 """
 
+import chardet
 from ..reader import TaggerReader
 
 class ConllPos(object):
@@ -48,7 +49,10 @@ class POSReader(TaggerReader):
 		as token_tag.
 		"""
 		self.sentences = []
-		with open(filename, 'rt') as f:
+		with open(filename, 'rb') as f: 
+			raw_data = f.read(1024)
+			detected = chardet.detect(raw_data).get('encoding', 'utf-8')
+		with open(filename, 'rt', encoding = detected) as f:
 			for line in f:
 				#line = unicode(line, 'utf-8')
 				items = line.split(ConllPos.SEP)
@@ -67,7 +71,10 @@ class POSReader(TaggerReader):
 		"""
 		self.sentences = []
 		sentence = []
-		with open(filename, 'rt') as f:
+		with open(filename, 'rb') as f: 
+			raw_data = f.read(1024)
+			detected = chardet.detect(raw_data).get('encoding', 'utf-8')
+		with open(filename, 'rt', encoding = detected) as f:
 			for line in f:
 				line = line.strip()
 				if line.strip() == '':
@@ -84,6 +91,7 @@ class POSReader(TaggerReader):
 		
 		if len(sentence) > 0:
 			self.sentences.append(sentence)
+
 
 # backwards compatibility
 MacMorphoReader = POSReader

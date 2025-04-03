@@ -5,6 +5,8 @@ import numpy as np
 from typing import Callable, Iterable, List, Tuple, Union
 from copy import deepcopy
 import itertools
+import torch
+import time
 from nltk.translate.bleu_score import *
 from nltk.metrics import confusionmatrix
 from collections import defaultdict
@@ -53,6 +55,37 @@ class DefaultMetric:
 				total+=n
 
 		return float(tp/total)
+
+	def accuracy_norm(model, tokenizer, input_text: str, candidates: list, label: int):
+		reserved_memory = []
+		inference_time = []
+		tokenized_prompt = tokenizer(input_text, return_tensors='pt').input_ids
+		total_candidate = []
+
+		for ending in candidates:
+			len_ending = len(ending)
+			tokenized_ending = tokenizer(ending, return_tensors='pt').input_ids
+			tokenized_ending = tokenized_ending[:, 1:]
+			input_ids = torch.cat([tokenized_prompt, tokenized_ending], dim=-1).cuda()
+			labels = input_ids.clone()
+			labels[0, :tokenized_prompt.shape[1]] = -100
+			start = time.time()
+			with torch.no_grad():
+				outputs = model(input_ids, labels=labels)
+				inference_time.append(time.time() - start)
+			reserved_memory.append(torch.cuda.memory_reserved() / (1024**2))
+			total_logprobs = -outputs.loss.item() * tokenized_ending.shape[1]
+			total_candidate.append(total_logprobs/len_ending)
+		answer_idx = total_candidate.index(max(total_candidate))
+		if int(label) == answer_idx:
+			cor = 1
+		else:
+			cor = 0
+		metric_dict = {
+			"reserved_memory": reserved_memory,
+			"inference_time": inference_time
+			}
+		return cor, metric_dict
 
 	def recall_score(self, true, pred, avg='micro'):
 
@@ -197,7 +230,7 @@ class DefaultMetric:
 
 		return (((precision*recall)/(precision+recall))*2)
 
-
+    
 
 
 	def pos_eval(self, fin):
