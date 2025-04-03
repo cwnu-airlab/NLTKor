@@ -532,7 +532,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import time
 import random
-import accuracy_norm
+from nltkor.metrics import DefaultMetric
 
 # 모델과 토크나이저 로드
 model_name = 'gpt2-medium'
@@ -599,7 +599,7 @@ memory_usages = []
 inference_times = []
 
 for example in examples:
-    cor, metrics = accuracy_norm(model, tokenizer, example["input_text"], example["candidates"], example["label"])
+    cor, metrics = DefaultMetric().accuracy_norm(model, tokenizer, example["input_text"], example["candidates"], example["label"])
     correct += cor
     memory_usages.append(metrics["reserved_memory"])
     inference_times.append(metrics["inference_time"])
@@ -776,7 +776,7 @@ Time: 0.05374705195426941, memory: 1409.9
 
 #### 5.10.1 BLEU for tensor
 - 각 score의 값이 tensor 로 반환한다.
-```
+```python
 >>> from nltk.translate.bleu_score import *
 >>> from nltko.tokenize import Ko_tokenize
 >>> can=torch.tensor([[1,2,3,4,5],[3,4,5,6,4]])
