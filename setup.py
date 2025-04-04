@@ -66,7 +66,7 @@ module1 = cythonize([
 
 setup(
   name='nltkor',
-  version='1.2.10',
+  version='1.2.11',
 	url='https://modi.changwon.ac.kr/air_cwnu/nlp_tool/nltk_ko.git',
   packages=find_packages(exclude=[]),
   python_requires='>=3.7',
