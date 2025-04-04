@@ -53,7 +53,7 @@ def package_files(directory):
     return paths
 
 extra_files = package_files('nltkor/sejong')
-extra_files = extra_files+package_files('nltk_kor/tag')
+extra_files = extra_files+package_files('nltkor/tag')
 
 module1 = cythonize([
     Extension(
@@ -66,7 +66,7 @@ module1 = cythonize([
 
 setup(
   name='nltkor',
-  version='1.2.12',
+  version='1.2.14',
 	url='https://modi.changwon.ac.kr/air_cwnu/nlp_tool/nltk_ko.git',
   packages=find_packages(exclude=[]),
   python_requires='>=3.7',
