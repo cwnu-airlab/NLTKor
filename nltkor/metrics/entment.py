@@ -1,6 +1,6 @@
 from nltkor.tag import EspressoTagger
 
-class EntMent :
+class EMR :
     
     def __init__(self):
         self.entity_list = []

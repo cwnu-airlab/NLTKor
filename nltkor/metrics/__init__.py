@@ -52,7 +52,7 @@ from nltk.metrics.aline import align
 from nltkor.metrics.eval import StringMetric
 """
 from nltkor.metrics.classical import DefaultMetric
-from nltkor.metrics.entment import EntMent
+from nltkor.metrics.entment import EMR
 from nltkor.metrics.bleu_tensor import *
 #DefaultMetric = lazy_import.lazy_callable("nltkor.metrics.classical.DefaultMetric")
 #Mauve = lazy_import.lazy_callable("nltkor.metrics.mauve.Mauve")

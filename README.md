@@ -777,19 +777,19 @@ Time: 0.05374705195426941, memory: 1409.9
 #### 5.10.1 BLEU for tensor
 - 각 score의 값이 tensor 로 반환한다.
 ```python
->>> from nltk.translate.bleu_score import *
->>> from nltko.tokenize import Ko_tokenize
+>>> from nltkor.metrics import DefaultMetric
+>>> import torch
 >>> can=torch.tensor([[1,2,3,4,5],[3,4,5,6,4]])
 >>> ref=torch.tensor([[1,2,3,4,5],[3,5,6,7,10]])
->>> bleu_tensor(ref,can,1)
+>>> DefaultMetric().bleu_tensor(ref,can,1)
 tensor(0.8000)
->>> bleu_tensor(ref,can,2)
+>>> DefaultMetric().bleu_tensor(ref,can,2)
 tensor(0.6250)
->>> bleu_tensor(ref,can,3)
+>>> DefaultMetric().bleu_tensor(ref,can,3)
 tensor(0.5000)
->>> bleu_tensor(ref,can,4)
+>>> DefaultMetric().bleu_tensor(ref,can,4)
 tensor(0.5000)
->>> bleu_tensor(ref,can)
+>>> DefaultMetric().bleu_tensor(ref,can)
 tensor(0.5946)
 
 ```
@@ -910,11 +910,18 @@ TF-IDF를 n-gram에 대한 가중치로 계산하고 참조 캡션과 생성 캡
 0.6303797468354431
 ```
 
-#### 5.14 EntMent
+#### 5.14 EMR(Entity Mention Recall)
 
-- EntMent (Entity Mention Recall)
 
-  : 요약된 텍스트에 포함된 고유 엔터티의 참조 비율
+요약된 텍스트가 참조 문서에 등장하는 중요 개체를 얼마나 잘 유지하고 있는지에 대한 평가 지표이다.
+
+```python
+>>> # -*- coding: utf-8 -*-
+>>> from nltkor.metrics import EntMent
+>>> EntMent().entity("국립창원대학교(총장 박민원)가 사천우주항공캠퍼스 개교와 함께 2025학년도 사천우주항공공학부 입학식을 7일 오전 11시 사천우주항공캠퍼스에서 열었다.이날 행사에는 박민원 총장을 비롯해 국민의힘 서천호 국회의원(사천·남해·하동), 윤영빈 우주항공청장, 박동식 사천시장, 김규헌 사천시의회 의장, 지역 유관기관 관계자들과 신입생 및 가족들이 참석했다. 글로컬대학30사업 선정에 따라 국립창원대와 통합을 추진 중인 경남도립거창대학, 경남도립남해대학 관계자도 함께 자리했다.행사는 1부 현판 제막식과 2부 입학식으로 진행됐으며, 박동식 사천시장은 신입생들에게 축하 선물로 금배지를 전달했고, 박민원 총장은 캠퍼스 설립에 기여한 유공자들에게 표창장을 수여했다.","국립창원대학교는 4월 7일 사천우주항공캠퍼스에서 2025학년도 사천우주항공공학부 입학식을 개최했다. 이날 행사에는 박민원 총장, 서천호 국회의원, 윤영빈 우주항공청장, 박동식 사천시장 등 주요 인사와 신입생 및 가족들이 참석했으며, 글로컬대학30사업과 관련된 거창대학·남해대학 관계자들도 함께했다. 행사는 현판 제막식과 입학식으로 나뉘어 진행되었고, 신입생들에게는 금배지가, 캠퍼스 설립 유공자들에게는 표창장이 수여되었다.")
+Downloading Espresso5 model...
+0.8888888888888888
+```
 
 
 ### 6 확장 평가 함수

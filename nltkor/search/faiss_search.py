@@ -33,11 +33,12 @@ SOFTWARE.
 This module contains a wrapper for the Faiss library by Facebook AI Research.
 """
 
-from collections import Counter     
+from collections import Counter  
 from typing import List, Union, Optional, Dict, Any
 import os
 import copy
 import logging
+import transformers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from nltkor.make_requirement import make_requirement
@@ -70,24 +71,28 @@ class FaissSearch:
             mode = None,
             model_name_or_path: str = 'klue/bert-base',
             tokenizer_name_or_path: str = 'klue/bert-base',
+            embedding_type: str = 'last_hidden_state',
             device: str = 'cpu'
             ) -> None:
         if mode == 'sentence':
-            return FaissSearch_SenEmbed(model_name_or_path)
+            return FaissSearch_SenEmbed(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
         elif mode == 'word':
-            return FaissSearch_WordEmbed(model_name_or_path)
+            return FaissSearch_WordEmbed(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
+        elif mode == 'splade':
+            return FaissSearch_Splade(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
         else:
-            raise ValueError("choice 'sentence' or 'word'")
+            raise ValueError("choice 'sentence' or 'word' or 'splade'")
 
 
-# FAISS original library wrapper class
+
 class FaissSearch_SenEmbed:
     def __init__(self,
         model_name_or_path: str = 'klue/bert-base',
         tokenizer_name_or_path: str = 'klue/bert-base',
+        embedding_type: str = 'last_hidden_state',
         device: str = 'cpu',
         ) -> None:
-        r"""
+        """
         This function initializes the wrapper for the FAISS library, which is used to perform semantic search.
 
 
@@ -143,8 +148,7 @@ class FaissSearch_SenEmbed:
         # Initialize the dataset
         self.dataset = None
 
-
-
+    
     # Auxiliary function to get the last hidden state
     def get_last_hidden_state(self,
         embeddings: torch.Tensor,
@@ -164,7 +168,6 @@ class FaissSearch_SenEmbed:
 
         # Return the last hidden state
         return last_hidden_state[:, 0, :]
-
 
 
     # Auxiliary function to get the mean pooling
@@ -244,7 +247,6 @@ class FaissSearch_SenEmbed:
         return embeddings
 
 
-
     # Add FAISS index
     def add_faiss_index(self,
         column_name: str = 'embeddings',
@@ -309,7 +311,6 @@ class FaissSearch_SenEmbed:
         self.dataset.save_faiss_index(index_name=index_name, file=file_path)
 
 
-
     def load_faiss_index(self,
         index_name: str,
         file_path: str,
@@ -337,7 +338,6 @@ class FaissSearch_SenEmbed:
 
         print('Loading FAISS index...')
         self.dataset.load_faiss_index(index_name=index_name, file=file_path, device=device)
-
 
 
     # Initialize the corpus using a dictionary or pandas DataFrame or HuggingFace Datasets object
@@ -407,7 +407,6 @@ class FaissSearch_SenEmbed:
         return self.dataset
 
 
-
     # Initialize the dataset using a JSON file
     def load_dataset_from_json(self,
         json_path: str,
@@ -427,7 +426,6 @@ class FaissSearch_SenEmbed:
 
         # Return the dataset
         return self.dataset
-
 
 
     # Search for the most similar elements in the dataset, given a query
@@ -475,12 +473,132 @@ class FaissSearch_SenEmbed:
 
 
 
+# FAISS Splade + ICT library wrapper class
+class FaissSearch_Splade(FaissSearch_SenEmbed):
+    def __init__(self,
+        model_name_or_path: str = 'klue/bert-base',
+        tokenizer_name_or_path: str = 'klue/bert-base',
+        embedding_type: str = 'last_hidden_state',
+        device: str = 'cpu',
+        ) -> None:
+        r"""
+        This function initializes the wrapper for the FAISS library, which is used to perform semantic search.
+
+
+        .. attention::
+
+            * If you use this class, please make sure to cite the following paper:
+
+                .. code-block:: latex
+
+                    @article{johnson2019billion,
+                        title={Billion-scale similarity search with {GPUs}},
+                        author={Johnson, Jeff and Douze, Matthijs and J{\'e}gou, Herv{\'e}},
+                        journal={IEEE Transactions on Big Data},
+                        volume={7},
+                        number={3},
+                        pages={535--547},
+                        year={2019},
+                        publisher={IEEE}
+                    }
+
+            * The code is based on the following GitHub repository:
+                https://github.com/facebookresearch/faiss
+
+        Arguments:
+            model_name_or_path (str, optional): The name or path of the model to use. Defaults to 'facebook/bart-large'.
+            tokenizer_name_or_path (str, optional): The name or path of the tokenizer to use. Defaults to 'facebook/bart-large'.
+            device (str, optional): The device to use. Defaults to 'cpu'.
+
+        Returns:
+            None
+        """
+
+        # Set the device
+        self.device = device
+
+        # If the tokenizer is not specified, use the model name or path
+        if tokenizer_name_or_path is None:
+            tokenizer_name_or_path = model_name_or_path
+
+        # Load the tokenizer
+        if tokenizer_name_or_path == 'skt/kobert-base-v1':
+            # self.tokenizer = KoBERTTokenizer.from_pretrained(tokenizer_name_or_path)
+            self.tokenizer = XLNetTokenizer.from_pretrained(tokenizer_name_or_path)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path)
+
+        # Load the model
+        self.model = transformers.BertForMaskedLM.from_pretrained(model_name_or_path).to(self.device)
+
+        # Set the model to evaluation mode (since we do not need the gradients)
+        self.model.eval()
+
+        # Initialize the dataset
+        self.dataset = None
+
+
+    # Get the embeddings
+    def get_embeddings(self,
+        text: Union[str, List[str]],
+        embedding_type: str = 'last_hidden_state',
+        batch_size: int = 8,
+        num_workers: int = 4,
+    ) -> torch.Tensor:
+        """
+        This function returns the embeddings of the input text.
+
+        Arguments:
+            text (Union[str, List[str]]): The input text.
+            embedding_type (str, optional): The type of embedding to use. Defaults to 'last_hidden_state'.
+            batch_size (int, optional): The batch size to use. Defaults to 8.
+            num_workers (int, optional): The number of workers to use. Defaults to 4.
+
+        Returns:
+            torch.Tensor: The embeddings.
+
+        Raises:
+            ValueError: If the embedding type is invalid.
+        """
+
+        # Check if the embedding type is valid
+        if embedding_type not in ['last_hidden_state', 'mean_pooling']:
+            raise ValueError(f'Invalid embedding type: {embedding_type}. Only "last_hidden_state" and "mean_pooling" are supported.')
+
+        # Tokenize the input text
+        encoded_text = self.tokenizer(
+            text,
+            padding=True,
+            truncation=True,
+            return_tensors='pt',
+        )
+
+        # Move the input text to the device
+        encoded_text = encoded_text.to(self.device)
+
+        # encoded_inputs = {k: v.to(self.device) for k, v in encoded_inputs.items()}
+
+        # Get the embeddings
+        with torch.no_grad():
+            embeddings = self.model(**encoded_text)
+        
+        # Get the last hidden state
+        embeddings = embeddings['logits']
+        
+        embeddings = torch.sum(torch.log(1+torch.relu(embeddings)) * encoded_text['attention_mask'].unsqueeze(-1), dim=1)
+        e_norm = torch.nn.functional.normalize(embeddings, p=2, dim=1, eps=1e-8)
+
+        # Return the embeddings
+        return e_norm
+
+
 
 # FAISS word embedding library wrapper class
 class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
     def __init__(self,
         model_name_or_path: str = 'klue/bert-base',
         tokenizer_name_or_path: str = 'klue/bert-base',
+        embedding_type: str = 'last_hidden_state',
         device: str = 'cpu',
         ) -> None:
         r"""
@@ -533,12 +651,12 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         # Load the model
         self.model = AutoModel.from_pretrained(model_name_or_path).to(self.device)
 
+
         # Set the model to evaluation mode (since we do not need the gradients)
         self.model.eval()
 
         # Initialize the dataset
         self.dataset = None
-
 
 
     # Get the embeddings (new code)
@@ -564,7 +682,7 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         Raises:
             ValueError: If the embedding type is invalid.
         """
-
+        
         # Check if the embedding type is valid
         if embedding_type not in ['last_hidden_state', 'mean_pooling']:
             raise ValueError(f'Invalid embedding type: {embedding_type}. Only "last_hidden_state" and "mean_pooling" are supported.')
@@ -577,12 +695,10 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
                 padding=False,
                 truncation=True,
                 return_tensors='pt',
-                add_special_tokens=False,
+                add_special_tokens=False
             )
-
             # Move the input text to the device
             encoded_text = encoded_text.to(self.device)
-        
             token_ids_list = encoded_text['input_ids'].tolist()
             token_ids_list = token_ids_list[0]
             for ids in token_ids_list:
@@ -591,17 +707,15 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
                 else:
                     if text not in ids_dict[ids]:
                         ids_dict[ids].append(sentence)
-        
         # Get the embeddings
         embedding_dict = {}
         self.model.eval()
         for key, value in ids_dict.items():
             embed = self.model(torch.tensor([[key]]), output_hidden_states=True).hidden_states[-1][:,0,:].detach()
             embedding_dict[embed] = value
-
+        
         # Return the embeddings
         return embedding_dict
-
 
 
     # Get the embeddings (new code)
@@ -657,7 +771,6 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         # Return the embeddings
         return embeds
 
-
     
     # Initialize the corpus using a dictionary or pandas DataFrame or HuggingFace Datasets object
     def initialize_corpus(self,
@@ -693,7 +806,7 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         
         # Set the embedding_type
         self.embedding_type = embedding_type
-
+        
         # get embedding dict
         embedding_dict = self.get_doc_embeddings(text=corpus, embedding_type=self.embedding_type)
 
@@ -729,7 +842,6 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         return self.dataset
 
 
-
     # Search for the most similar elements in the dataset, given a query
     def search(self,
         query: str,
@@ -751,7 +863,6 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
             The returned elements are dictionaries containing the text and the score.
         """
 
-
         # Get the embeddings of the query
         query_embeddings = self.get_query_embeddings([query], embedding_type=self.embedding_type)
 
@@ -768,6 +879,7 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
             scores.append(score)
             similar_elts.append(similar_elt)
         
+
         text_list = []
         for item in similar_elts:
             for text in item['text']:
@@ -776,12 +888,10 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         flat_list = [sentence for sublist in text_list for sentence in sublist]
         count = Counter(flat_list)
         count = dict(count.most_common(5))
-        
+         
         sorted_dict = dict(sorted(count.items(), key=lambda x: x[1], reverse=True))
-
         # Convert the results to a pandas DataFrame
         results_df = pd.DataFrame({'text': sorted_dict.keys() , 'freq': sorted_dict.values()})
         
-
         # Return the most similar elements
         return results_df
