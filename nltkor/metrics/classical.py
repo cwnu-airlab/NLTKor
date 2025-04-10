@@ -7,6 +7,7 @@ from copy import deepcopy
 import itertools
 import torch
 import time
+import math
 from nltk.translate.bleu_score import *
 from nltk.metrics import confusionmatrix
 from collections import defaultdict
@@ -414,6 +415,17 @@ class DefaultMetric:
 			return self.bleu(reference,candiate,(0,0,1,0), smoothing_function=smoothing_function)
 		elif n==4:
 			return self.bleu(reference,candiate,(0,0,0,1), smoothing_function=smoothing_function)
+
+	def bleu_tensor(self,reference,candidate,n=0, smoothing_function=None):
+
+		if n: weights = tuple(1 if i == n-1 else 0 for i in range(4))
+		else: weights = (0.25, 0.25, 0.25, 0.25)
+ 
+		reference=reference.unsqueeze(1)
+		reference=reference.numpy()
+		candidate=candidate.numpy()
+		return torch.tensor(corpus_bleu(reference,candidate,weights,smoothing_function=smoothing_function))
+
 
 
 

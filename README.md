@@ -777,19 +777,19 @@ Time: 0.05374705195426941, memory: 1409.9
 #### 5.10.1 BLEU for tensor
 - 각 score의 값이 tensor 로 반환한다.
 ```python
->>> from nltk.translate.bleu_score import *
->>> from nltko.tokenize import Ko_tokenize
+>>> from nltkor.metrics import DefaultMetric
+>>> import torch
 >>> can=torch.tensor([[1,2,3,4,5],[3,4,5,6,4]])
 >>> ref=torch.tensor([[1,2,3,4,5],[3,5,6,7,10]])
->>> bleu_tensor(ref,can,1)
+>>> DefaultMetric().bleu_tensor(ref,can,1)
 tensor(0.8000)
->>> bleu_tensor(ref,can,2)
+>>> DefaultMetric().bleu_tensor(ref,can,2)
 tensor(0.6250)
->>> bleu_tensor(ref,can,3)
+>>> DefaultMetric().bleu_tensor(ref,can,3)
 tensor(0.5000)
->>> bleu_tensor(ref,can,4)
+>>> DefaultMetric().bleu_tensor(ref,can,4)
 tensor(0.5000)
->>> bleu_tensor(ref,can)
+>>> DefaultMetric().bleu_tensor(ref,can)
 tensor(0.5946)
 
 ```
