@@ -51,7 +51,7 @@
   - [5.11 ROUGE](#511-rouge)
   - [5.12 CIDER](#512-cider)
   - [5.13 METEOR](#513-meteor)
-  - [5.14 EMR](#514-emr)
+  - [5.14 EMR(Entity Mention Recall)](#514-emr-entity-mention-recall)
 - [6 확장 평가 함수](#6-확장-평가-함수)
   - [6.1 MAUVE](#61-mauve)
   - [6.2 BERT Score](#62-bert-score)
