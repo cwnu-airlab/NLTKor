@@ -78,10 +78,10 @@ class FaissSearch:
             return FaissSearch_SenEmbed(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
         elif mode == 'word':
             return FaissSearch_WordEmbed(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
-        elif mode == 'splade':
-            return FaissSearch_Splade(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
+        elif mode == 'sparse':
+            return FaissSearch_Sparse(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
         else:
-            raise ValueError("choice 'sentence' or 'word' or 'splade'")
+            raise ValueError("choice 'sentence' or 'word' or 'sparse'")
 
 
 
@@ -233,7 +233,7 @@ class FaissSearch_SenEmbed:
 
         # Get the embeddings
         with torch.no_grad():
-            embeddings = self.model(**encoded_text)
+            embeddings = self.model(encoded_text['input_ids'])
 
         # Get the proper embedding type
         if embedding_type == 'last_hidden_state':
@@ -426,7 +426,7 @@ class FaissSearch_SenEmbed:
 
         # Return the dataset
         return self.dataset
-
+    
 
     # Search for the most similar elements in the dataset, given a query
     def search(self,
@@ -465,6 +465,7 @@ class FaissSearch_SenEmbed:
         # Add the scores
         results_df['score'] = scores
 
+
         # Sort the results by score
         results_df.sort_values("score", ascending=True, inplace=True)
 
@@ -473,8 +474,7 @@ class FaissSearch_SenEmbed:
 
 
 
-# FAISS Splade + ICT library wrapper class
-class FaissSearch_Splade(FaissSearch_SenEmbed):
+class FaissSearch_Sparse(FaissSearch_SenEmbed):
     def __init__(self,
         model_name_or_path: str = 'klue/bert-base',
         tokenizer_name_or_path: str = 'klue/bert-base',
@@ -580,14 +580,14 @@ class FaissSearch_Splade(FaissSearch_SenEmbed):
 
         # Get the embeddings
         with torch.no_grad():
-            embeddings = self.model(**encoded_text)
+            embeddings = self.model(encoded_text['input_ids'])
         
         # Get the last hidden state
         embeddings = embeddings['logits']
         
         embeddings = torch.sum(torch.log(1+torch.relu(embeddings)) * encoded_text['attention_mask'].unsqueeze(-1), dim=1)
         e_norm = torch.nn.functional.normalize(embeddings, p=2, dim=1, eps=1e-8)
-
+        
         # Return the embeddings
         return e_norm
 
