@@ -612,6 +612,7 @@ accuracy = correct / len(examples)
 print(f"Accuracy: {accuracy * 100:.2f}%")
 print(f"Time: {sum(inference_times)/len(inference_times)}, memory: {sum(memory_usages)/len(memory_usages)}")
 ```
+**결과**
 ```
 Accuracy: 20.00
 Time: 0.05374705195426941, memory: 1409.9
@@ -1696,7 +1697,7 @@ word = 'gbc'
 values, value_data = sc.search_dict(word, True)
 print(values, value_data)
 ```
-**사용법 & 결과**
+**결과**
 ```
 ['고용 노동부'] ['NN']
 ['2시뉴스외전'] ['NN']
