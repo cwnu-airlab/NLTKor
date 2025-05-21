@@ -89,6 +89,7 @@
   - [12.3 KMP 검색 알고리즘](#123-kmp-검색)
   - [12.4 Boyer-Moore 검색 알고리즘](#124-boyer-moore-검색)
   - [12.5 Faiss-Semantic 검색](#125-faiss-semantic-검색)
+  - [12.6 TRIE 검색](#126-trie-검색)
 - [13. 세종전자사전 (ssem)](#13-세종전자사전-ssem)
   - [13.1 객체 확인 방법](#131-객체-확인-방법)
   - [13.2 entry 접근법](#132-entry-접근법)
@@ -1663,6 +1664,42 @@ Adding FAISS index...
 2      요즘 드라마를 많이 시청하고 있어요.  [-0.2683958113, 0.6801461577, -1.1375769377, 0...  29.339230
 3    다음 주에 시험이 있어서 공부해야 해요.  [-0.2001256347, 0.5758355856, -1.0528291464, 0...  31.358824
 4     피아노 연주는 나를 편안하게 해줍니다.  [-0.242319867, 0.6492734551, -1.4172941446, 0....  34.069862
+```
+
+#### 12.6 TRIE 검색
+- 텍스트 파일에 word가 포함되어 있는지 판단한다.
+
+```python
+root = {}
+dict_file = '텍스트 파일 경로'
+sc = SearchDic(root)
+with open(dict_file, 'r') as f:
+    for line in f:
+        if ';;' in line[:2]: continue
+        k, v = line.strip().split('\t')
+        sc.build_search_dict(k, v)
+# print(root)
+word = '고용 노동부'
+values, value_data = sc.search_dict(word, True)
+print(values, value_data)
+
+word = '2시뉴스외전'
+values, value_data = sc.search_dict(word, True)
+print(values, value_data)
+word = '2시 뉴스외전'
+values, value_data = sc.search_dict(word, True)
+print(values, value_data)
+
+word = 'gbc'
+values, value_data = sc.search_dict(word, True)
+print(values, value_data)
+```
+**사용법 & 결과**
+```
+['고용 노동부'] ['NN']
+['2시뉴스외전'] ['NN']
+['2시 뉴스외전'] ['NN']
+['bc'] ['ND']
 ```
 
 ### 13. 세종전자사전 (ssem)
