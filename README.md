@@ -110,18 +110,13 @@ NLTKor는 한국어를 위한 NLTK이며 기존의 영어에서 사용하는 Wor
 
 ## 2. 사용 환경
 
-- 운영체제 : ubuntu 18.04, ubuntu 22.04, MacOS
+- 운영체제 : ubuntu 18.04, ubuntu 22.04, MacOS, Windows
 - 언어 : `python3.8`, `python3.9`, `python3.10`, `python3.11`
 - 라이브러리 : nltk>=1.1.3, numpy==1.23, faiss-cpu=1.7.3 **※ 해당 NLTKor는 영어 NLTK를 별도로 인스톨해야 함.**
 
 **주의사항**
 
-- Espresso5의 EspressoTagger의 사용가능 환경은 다음과 같다.
-
-| OS     | python                                    | 아키텍처      |
-| ------ | ----------------------------------------- | ------------- |
-| Mac    | python3.8                                 | arm64         |
-| ubuntu | python3.8 python3.9 python3.10 python3.11 | arm64, x86_64 |
+- Windows 환경에서 python 3.9~3.11을 사용할 경우 fasttext 라이브러리가 지원되지 않습니다. 대신 fasttext-wheel  라이브러리를 사용해야 합니다(pip install fasttext-wheel).
 
 ### 2.1 라이브러리 설치
 
