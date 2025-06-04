@@ -1528,21 +1528,33 @@ P to Q2 : 0.1981
 ```
 
 #### 12.5 Faiss-Semantic 검색
+- class FaissSearch
+	- **__new__**(mode = None, model_name_or_path: str = 'klue/bert-base', tokneizer_name_or_path: str = 'klue/bert-base', device: str = 'cpu') -> None : mode에 따라 이용할 class로 이동합니다.
+		- mode = dense(dense | sparse)
 
-- **init**(model_name_or_path: str = 'facebook/bart-large', tokenizer_name_or_path: str = 'facebook/bart-large', device: str = 'cpu')→ None : FaissSearh를 초기화 합니다.
-- add_faiss_index(column_name: str = 'embeddings', metric_type: int | None = None, batch_size: int = 8, \*\*kwargs)→ None : FAISS index를 dataset에 추가합니다.
-- get_embeddings(text: str | List[str], embedding_type: str = 'last_hidden_state', batch_size: int = 8, num_workers: int = 4)→ Tensor : 텍스트를 임베딩합니다.
-- get_last_hidden_state(embeddings: Tensor)→ Tensor : 임베딩된 텍스트의 last hidden state를 반환합니다.
-- get_mean_pooling(embeddings: Tensor)→ Tensor : 입력 임베딩의 mean pooling을 반환합니다.
-- initialize_corpus(corpus: Dict[str, List[str]] | DataFrame | Dataset, section: str = 'text', index_column_name: str = 'embeddings', embedding_type: str = 'last_hidden_state', batch_size: int | None = None, num_workers: int | None = None, save_path: str | None = None)→ Dataset : 데이터셋을 초기화합니다.
-- load_dataset_from_json(json_path: str)→ Dataset : json 파일에서 데이터셋을 로드합니다.
-- load_faiss_index(index_name: str, file_path: str, device: str = 'cpu')→ None : FAISS index를 로드합니다.
-- save_faiss_index(index_name: str, file_path: str)→ None : 특정한 파일 경로로 FAISS index를 저장합니다.
-- search(query: str, k: int = 1, index_column_name: str = 'embeddings')→ DataFrame : 데이터셋에서 쿼리를 검색합니다.
+- class FaissSearch_Dense : 기존 Faiss를 이용한 검색
+	- **init**(model_name_or_path: str = 'klue/bert-base', tokenizer_name_or_path: str = 'klue/bert-base', device: str = 'cpu')→ None : FaissSearh_Dense를 초기화 합니다.
+	- add_faiss_index(column_name: str = 'embeddings', metric_type: int | None = None, batch_size: int = 8, \*\*kwargs)→ None : FAISS index를 dataset에 추가합니다.
+	- get_embeddings(text: str | List[str], embedding_type: str = 'last_hidden_state', batch_size: int = 8, num_workers: int = 4)→ Tensor : 텍스트를 임베딩합니다.
+	- get_last_hidden_state(embeddings: Tensor)→ Tensor : 임베딩된 텍스트의 last hidden state를 반환합니다.
+	- get_mean_pooling(embeddings: Tensor)→ Tensor : 입력 임베딩의 mean pooling을 반환합니다.
+	- initialize_corpus(corpus: Dict[str, List[str]] | DataFrame | Dataset, section: str = 'text', index_column_name: str = 'embeddings', embedding_type: str = 'last_hidden_state', batch_size: int | None = None, num_workers: int | None = None, save_path: str | None = None)→ Dataset : 데이터셋을 초기화합니다.
+	- load_dataset_from_json(json_path: str)→ Dataset : json 파일에서 데이터셋을 로드합니다.
+	- load_faiss_index(index_name: str, file_path: str, device: str = 'cpu')→ None : FAISS index를 로드합니다.
+	- save_faiss_index(index_name: str, file_path: str)→ None : 특정한 파일 경로로 FAISS index를 저장합니다.
+	- search(query: str, k: int = 1, index_column_name: str = 'embeddings')→ DataFrame : 데이터셋에서 쿼리를 검색합니다.
+
+- class FaissSearch_Sparse(FaissSearch_Dense) : 학습가능한 sparse representation을 이용하는 모델을 위한 faiss
+	- **init**(model_name_or_path: str = 'klue/bert-base', tokenizer_name_or_path: str = 'klue/bert-base', device: str = 'cpu') -> None : FaissSearch_Sparse를 초기화합니다.
+	- get_embeddings(text: str | List[str], embedding_type: str = 'last_hidden_state', batch_size: int = 8, num_workers: int = 4) -> Tensor : 텍스트를 임베딩합니다.
+
+<br>
+
+- mode = 'dense' : 원본 faiss를 실행합니다.
 
 ```python
->>> from nltkor.search import FaissSearch
->>> faiss = FaissSearch(model_name_or_path = 'facebook/bart-large')
+>>> from nltkor.search.faiss_search import FaissSearch
+>>> faiss = FaissSearch(model_name_or_path = 'klue/bert-base', mode='dense')
 >>> corpus = {
         'text': [
                 "오늘은 날씨가 매우 덥습니다.",
@@ -1578,29 +1590,93 @@ P to Q2 : 0.1981
         ],
     }
 >>> faiss.initialize_corpus(corpus=corpus, section='text', embedding_type='mean_pooling')
->>> query = "오늘은 날시가 매우 춥다."
+>>> query = "오늘은 날씨가 매우 춥다."
 >>> top_k = 5
 >>> result = faiss.search(query, top_k)
 >>> print(result)
-                       text                                         embeddings      score
-0          오늘은 날씨가 매우 덥습니다.  [-0.2576247453689575, 0.47791656851768494, -1....  14.051050
-1  한국 음식 중에서 떡볶이가 제일 맛있습니다.  [-0.2623925805091858, 0.46345704793930054, -1....  28.752083
-2      요즘 드라마를 많이 시청하고 있어요.  [-0.2683958113193512, 0.6801461577415466, -1.1...  29.339230
-3    다음 주에 시험이 있어서 공부해야 해요.  [-0.20012563467025757, 0.5758355855941772, -1....  31.358824
-4     피아노 연주는 나를 편안하게 해줍니다.  [-0.24231986701488495, 0.6492734551429749, -1....  34.069862
+
+
+text                                         embeddings       score
+0           오늘은 날씨가 매우 덥습니다.  [-0.06737425178289413, -0.6356450319290161, -0...   52.453941
+1  휴대폰 없이 하루를 보내는 것이 쉽지 않아요.  [0.09126424789428711, -0.011225797235965729, -...  168.310577
+2      내일은 친구와 영화를 보러 갈 거예요.  [-0.21793286502361298, -0.2237573117017746, 0....  181.051544
+3        요리를 만들면 집안이 좋아보입니다.  [0.7215852737426758, -0.426792711019516, -0.07...  203.423340
+4          스포츠를 하면 건강에 좋습니다.  [0.1290944665670395, -0.6169838905334473, -0.2...  205.527954
+
 ```
 
+<br>
+
+- mode = 'sparse' : 학습가능한 sparse representation을 이용한 모델을 위한 faiss 코드를 실행합니다.
+
+```python
+>>> from nltkor.search.faiss_search import FaissSearch
+>>> model_name_or_path = 'klue/bert-base'
+>>> faiss = FaissSearch(model_name_or_path=model_name_or_path, mode='sparse')
+>>> corpus = {
+        'text': [
+                "오늘은 날씨가 매우 덥습니다.",
+                "저는 음악을 듣는 것을 좋아합니다.",
+                "한국 음식 중에서 떡볶이가 제일 맛있습니다.",
+                "도서관에서 책을 읽는 건 좋은 취미입니다.",
+                "내일은 친구와 영화를 보러 갈 거예요.",
+                "여름 휴가 때 해변에 가서 수영하고 싶어요.",
+                "한국의 문화는 다양하고 흥미로워요.",
+                "피아노 연주는 나를 편안하게 해줍니다.",
+                "공원에서 산책하면 스트레스가 풀립니다.",
+                "요즘 드라마를 많이 시청하고 있어요.",
+                "커피가 일상에서 필수입니다.",
+                "새로운 언어를 배우는 것은 어려운 일이에요.",
+                "가을에 단풍 구경을 가고 싶어요.",
+                "요리를 만들면 집안이 좋아보입니다.",
+                "휴대폰 없이 하루를 보내는 것이 쉽지 않아요.",
+                "스포츠를 하면 건강에 좋습니다.",
+                "고양이와 개 중에 어떤 동물을 좋아하세요?"
+                "천천히 걸어가면서 풍경을 감상하는 것이 좋아요.",
+                "일주일에 한 번은 가족과 모임을 가요.",
+                "공부할 때 집중력을 높이는 방법이 있을까요?",
+                "봄에 꽃들이 피어날 때가 기대되요.",
+                "여행 가방을 챙기고 싶어서 설레여요.",
+                "사진 찍는 걸 좋아하는데, 카메라가 필요해요.",
+                "다음 주에 시험이 있어서 공부해야 해요.",
+                "운동을 하면 몸이 가벼워집니다.",
+                "좋은 책을 읽으면 마음이 풍요로워져요.",
+                "새로운 음악을 발견하면 기분이 좋아져요.",
+                "미술 전시회에 가면 예술을 감상할 수 있어요.",
+                "친구들과 함께 시간을 보내는 건 즐거워요.",
+                "자전거 타면 바람을 맞으면서 즐거워집니다."
+        ],
+    }
+>>> faiss.initialize_corpus(corpus=corpus, section='text', embedding_type='last_hidden_state')
+>>> query = "오늘은 날씨가 매우 춥다."
+>>> top_k = 5
+>>> result = faiss.search(query=query, k=top_k)
+>>> print(result)
+
+text                                         embeddings     score
+0           오늘은 날씨가 매우 덥습니다.  [0.0, 0.055695388466119766, 0.0, 0.0, 0.0, 0.0...  0.130759
+1  휴대폰 없이 하루를 보내는 것이 쉽지 않아요.  [0.0, 0.06064636632800102, 0.0, 0.0, 0.0, 0.03...  0.418491
+2      내일은 친구와 영화를 보러 갈 거예요.  [0.0, 0.0474698506295681, 0.0, 0.0, 0.0, 0.039...  0.435895
+3         가을에 단풍 구경을 가고 싶어요.  [0.0, 0.05392831563949585, 0.0, 0.0, 0.0, 0.05...  0.488796
+4          스포츠를 하면 건강에 좋습니다.  [0.0, 0.05404529720544815, 0.0, 0.0, 0.0, 0.04...  0.496646
+
+```
+
+<br>
+
+
 - faiss 검색을 매번 initialize 하지 않고, 미리 initialize 해놓은 후 검색을 수행할 수 있습니다.
+
 
 **사용법 & 결과**
 
 ```python
->>> from nltkor.search import FaissSearch
+>>> from nltkor.search.faiss_search import FaissSearch
 
 # if you use model and tokenizer in local
 # faiss = FaissSearch(model_name_or_path = '~/test_model/trained_model/', tokenizer_name_or_path = '~/test_model/trained_model/')
 
->>> faiss = FaissSearch(model_name_or_path = 'facebook/bart-large')
+>>> faiss = FaissSearch(model_name_or_path = 'klue/bert-base', mode='dense')
 >>> corpus = {
         'text': [
                 "오늘은 날씨가 매우 덥습니다.",
@@ -1641,12 +1717,12 @@ P to Q2 : 0.1981
 - `initialize_corpus()` 메소드 실행시 `save_path`를 지정하면, 해당 경로에 임베딩된 Dataset이 json형식으로 저장됩니다.
 
 ```python
->>> from nltkor.search import FaissSearch
+>>> from nltkor.search.faiss_search import FaissSearch
 
->>> faiss = FaissSearch(model_name_or_path = 'facebook/bart-large')
+>>> faiss = FaissSearch(model_name_or_path = 'klue/bert-base', mode='dense')
 >>> faiss.load_dataset_from_json('./test.json')
 >>> faiss.embedding_type = 'mean_pooling' # initalize_corpus() 메소드 실행시 지정한 embedding_type과 동일하게 지정해야 합니다.
->>> faiss,add_faiss_index(colum_name = 'embeddings')
+>>> faiss.add_faiss_index(colum_name = 'embeddings')
 >>> query = '오늘은 날씨가 매우 춥다.'
 >>> top_k = 5
 >>> result = faiss.search(query=query, top_k=top_k)
