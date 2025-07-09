@@ -16,7 +16,7 @@ class Enum(object):
 
 class Ko_tokenize():
 
-    def word(target, encoding='utf8'):
+    def word(self, target, encoding='utf8'):
         """ Word Tokenizer
 
         단어 단위로 Tokenizing 한다.
@@ -44,8 +44,8 @@ class Ko_tokenize():
         type_prev = 0
         type_cur = 0
 
-        if type(target) == str:
-            target = target
+        if type(target) != str:
+            raise Exception("function expect str, check the value")
 
         for i in range(len(target)):
             ch = target[i]
@@ -78,7 +78,7 @@ class Ko_tokenize():
 
 
 
-    def syllable(text,blank=False):
+    def syllable(self, text, blank=False):
         """
         음절 토크나이저
 
@@ -98,7 +98,7 @@ class Ko_tokenize():
         return emjeol_list
 
 
-    def sentence(text):
+    def sentence(self, text):
         """
         문장 토크나이저
 

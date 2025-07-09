@@ -67,21 +67,17 @@ def split_syllable(character, encoding = None):
 #초/중/종성 결합 함수. kor_join()
 def join_syllable(choseong, jungseong, jongseong, encoding = None):
 
-
-	if len(choseong)|len(choseong)|len(choseong)>1 :
-		error()
-		return
-	elif len(choseong)|len(choseong)|len(choseong)<=0 :
-		error()
-		return
+	if len(choseong) != 1 or len(jungseong) != 1 or len(jongseong) > 1:
+			self.error()
+			return
 
 	returnChr = lambda x: (x and chr(x)) or str()
-	returnChar = lambda x: returnChr(x)
 
 	if not jungseong:
 		if not choseong:
 			return returnChar(0)
 		return choseong
+		
 	else:
 		if not choseong:
 			return jungseong
