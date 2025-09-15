@@ -44,8 +44,8 @@ class Ko_tokenize():
         type_prev = 0
         type_cur = 0
 
-        if type(target) != str:
-            raise Exception("function expect str, check the value")
+        if type(target) == str:
+            target = target
 
         for i in range(len(target)):
             ch = target[i]
