@@ -8,7 +8,7 @@
 | 2    | 2024.5.22 | 차정원 | NLTKo 1.1.0 공개 |
 | 3    | 2025.2.5 | 이예나 | NLTKor 1.2.0 공개<br> bleu tensor 추가, entment 추가, accurancy norm 추가 |
 | 4    | 2025.4.3 | 이예나 | NLTKor 1.2.10 업데이트<br> espresso 오류 수정 |
-| 5    | 2025.5.21 | 정찬혁 | NLTKor 1.2.20 업데이트<br> TRIE 검색 추가|
+| 5    | 2025.5.21 | 정찬혁 | NLTKor 1.2.21 업데이트<br> TRIE 검색 추가|
 
 
 
