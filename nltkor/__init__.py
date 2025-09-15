@@ -13,4 +13,4 @@ from nltkor import trans
 from nltkor import Kor_char
 from nltkor import etc
 
-__version__ = '1.2.21'
+__version__ = '1.2.22'
