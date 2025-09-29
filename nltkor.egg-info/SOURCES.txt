@@ -21,7 +21,6 @@ nltkor/distance/wasserstein.py
 nltkor/metrics/__init__.py
 nltkor/metrics/bartscore.py
 nltkor/metrics/bertscore.py
-nltkor/metrics/bleu_tensor.py
 nltkor/metrics/classical.py
 nltkor/metrics/entment.py
 nltkor/metrics/eval.py
@@ -36,6 +35,7 @@ nltkor/search/__init__.py
 nltkor/search/classical.py
 nltkor/search/faiss_search.py
 nltkor/search/kobert_tokenizer.py
+nltkor/search/trie_search.py
 nltkor/sejong/__init__.py
 nltkor/sejong/ch.py
 nltkor/sejong/dict_semClassNum.txt
@@ -127,5 +127,5 @@ nltkor/tag/libs/wsd/__pycache__/wsd_reader.cpython-38.pyc
 nltkor/tag/libs/wsd/__pycache__/wsd_reader.cpython-39.pyc
 nltkor/tokenize/__init__.py
 nltkor/tokenize/ko_tokenize.py
-test/test.py
-test/testespresso.py
+nltkor/tokenize/tokenize/__init__.py
+nltkor/tokenize/tokenize/ko_tokenize.py

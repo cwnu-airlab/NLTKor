@@ -33,11 +33,12 @@ SOFTWARE.
 This module contains a wrapper for the Faiss library by Facebook AI Research.
 """
 
-from collections import Counter     
+from collections import Counter  
 from typing import List, Union, Optional, Dict, Any
 import os
 import copy
 import logging
+import transformers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from nltkor.make_requirement import make_requirement
@@ -67,27 +68,29 @@ except ImportError:
 
 class FaissSearch:
     def __new__(cls,
-            mode = None,
+            mode = 'dense',
             model_name_or_path: str = 'klue/bert-base',
             tokenizer_name_or_path: str = 'klue/bert-base',
+            embedding_type: str = 'last_hidden_state',
             device: str = 'cpu'
             ) -> None:
-        if mode == 'sentence':
-            return FaissSearch_SenEmbed(model_name_or_path)
-        elif mode == 'word':
-            return FaissSearch_WordEmbed(model_name_or_path)
+        if mode == 'dense':
+            return FaissSearch_Dense(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
+        elif mode == 'sparse':
+            return FaissSearch_Sparse(model_name_or_path=model_name_or_path, embedding_type=embedding_type)
         else:
-            raise ValueError("choice 'sentence' or 'word'")
+            raise ValueError("choice 'dense' or 'sparse'.")
 
 
-# FAISS original library wrapper class
-class FaissSearch_SenEmbed:
+
+class FaissSearch_Dense:
     def __init__(self,
         model_name_or_path: str = 'klue/bert-base',
         tokenizer_name_or_path: str = 'klue/bert-base',
+        embedding_type: str = 'last_hidden_state',
         device: str = 'cpu',
         ) -> None:
-        r"""
+        """
         This function initializes the wrapper for the FAISS library, which is used to perform semantic search.
 
 
@@ -143,8 +146,7 @@ class FaissSearch_SenEmbed:
         # Initialize the dataset
         self.dataset = None
 
-
-
+    
     # Auxiliary function to get the last hidden state
     def get_last_hidden_state(self,
         embeddings: torch.Tensor,
@@ -164,7 +166,6 @@ class FaissSearch_SenEmbed:
 
         # Return the last hidden state
         return last_hidden_state[:, 0, :]
-
 
 
     # Auxiliary function to get the mean pooling
@@ -230,7 +231,7 @@ class FaissSearch_SenEmbed:
 
         # Get the embeddings
         with torch.no_grad():
-            embeddings = self.model(**encoded_text)
+            embeddings = self.model(encoded_text['input_ids'])
 
         # Get the proper embedding type
         if embedding_type == 'last_hidden_state':
@@ -242,7 +243,6 @@ class FaissSearch_SenEmbed:
 
         # Return the embeddings
         return embeddings
-
 
 
     # Add FAISS index
@@ -309,7 +309,6 @@ class FaissSearch_SenEmbed:
         self.dataset.save_faiss_index(index_name=index_name, file=file_path)
 
 
-
     def load_faiss_index(self,
         index_name: str,
         file_path: str,
@@ -337,7 +336,6 @@ class FaissSearch_SenEmbed:
 
         print('Loading FAISS index...')
         self.dataset.load_faiss_index(index_name=index_name, file=file_path, device=device)
-
 
 
     # Initialize the corpus using a dictionary or pandas DataFrame or HuggingFace Datasets object
@@ -407,7 +405,6 @@ class FaissSearch_SenEmbed:
         return self.dataset
 
 
-
     # Initialize the dataset using a JSON file
     def load_dataset_from_json(self,
         json_path: str,
@@ -427,8 +424,7 @@ class FaissSearch_SenEmbed:
 
         # Return the dataset
         return self.dataset
-
-
+    
 
     # Search for the most similar elements in the dataset, given a query
     def search(self,
@@ -467,6 +463,7 @@ class FaissSearch_SenEmbed:
         # Add the scores
         results_df['score'] = scores
 
+
         # Sort the results by score
         results_df.sort_values("score", ascending=True, inplace=True)
 
@@ -475,12 +472,11 @@ class FaissSearch_SenEmbed:
 
 
 
-
-# FAISS word embedding library wrapper class
-class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
+class FaissSearch_Sparse(FaissSearch_Dense):
     def __init__(self,
         model_name_or_path: str = 'klue/bert-base',
         tokenizer_name_or_path: str = 'klue/bert-base',
+        embedding_type: str = 'last_hidden_state',
         device: str = 'cpu',
         ) -> None:
         r"""
@@ -522,7 +518,7 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         # If the tokenizer is not specified, use the model name or path
         if tokenizer_name_or_path is None:
             tokenizer_name_or_path = model_name_or_path
-        
+
         # Load the tokenizer
         if tokenizer_name_or_path == 'skt/kobert-base-v1':
             # self.tokenizer = KoBERTTokenizer.from_pretrained(tokenizer_name_or_path)
@@ -531,7 +527,7 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path)
 
         # Load the model
-        self.model = AutoModel.from_pretrained(model_name_or_path).to(self.device)
+        self.model = transformers.BertForMaskedLM.from_pretrained(model_name_or_path).to(self.device)
 
         # Set the model to evaluation mode (since we do not need the gradients)
         self.model.eval()
@@ -540,72 +536,8 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         self.dataset = None
 
 
-
-    # Get the embeddings (new code)
-    def get_doc_embeddings(self,
-        #text: Union[str, List[str]],
-        text=None,
-        embedding_type: str = 'last_hidden_state',
-        batch_size: int = 8,
-        num_workers: int = 4,
-    ) -> torch.Tensor:
-        """
-        This function returns the embeddings of the input text.
-
-        Arguments:
-            text (Union[str, List[str]]): The input text.
-            embedding_type (str, optional): The type of embedding to use. Defaults to 'last_hidden_state'.
-            batch_size (int, optional): The batch size to use. Defaults to 8.
-            num_workers (int, optional): The number of workers to use. Defaults to 4.
-
-        Returns:
-            torch.Tensor: The embeddings.
-
-        Raises:
-            ValueError: If the embedding type is invalid.
-        """
-
-        # Check if the embedding type is valid
-        if embedding_type not in ['last_hidden_state', 'mean_pooling']:
-            raise ValueError(f'Invalid embedding type: {embedding_type}. Only "last_hidden_state" and "mean_pooling" are supported.')
-
-        ids_dict = {}
-        # Tokenize the input text
-        for sentence in text['text']:
-            encoded_text = self.tokenizer(
-                sentence,
-                padding=False,
-                truncation=True,
-                return_tensors='pt',
-                add_special_tokens=False,
-            )
-
-            # Move the input text to the device
-            encoded_text = encoded_text.to(self.device)
-        
-            token_ids_list = encoded_text['input_ids'].tolist()
-            token_ids_list = token_ids_list[0]
-            for ids in token_ids_list:
-                if ids not in ids_dict.keys():
-                    ids_dict[ids] = [sentence]
-                else:
-                    if text not in ids_dict[ids]:
-                        ids_dict[ids].append(sentence)
-        
-        # Get the embeddings
-        embedding_dict = {}
-        self.model.eval()
-        for key, value in ids_dict.items():
-            embed = self.model(torch.tensor([[key]]), output_hidden_states=True).hidden_states[-1][:,0,:].detach()
-            embedding_dict[embed] = value
-
-        # Return the embeddings
-        return embedding_dict
-
-
-
-    # Get the embeddings (new code)
-    def get_query_embeddings(self,
+    # Get the embeddings
+    def get_embeddings(self,
         text: Union[str, List[str]],
         embedding_type: str = 'last_hidden_state',
         batch_size: int = 8,
@@ -634,154 +566,25 @@ class FaissSearch_WordEmbed(FaissSearch_SenEmbed):
         # Tokenize the input text
         encoded_text = self.tokenizer(
             text,
-            padding=False,
+            padding=True,
             truncation=True,
             return_tensors='pt',
-            add_special_tokens=False,
         )
-        
+
         # Move the input text to the device
         encoded_text = encoded_text.to(self.device)
 
-        token_ids_list = encoded_text['input_ids'].tolist()
-        token_ids_list = token_ids_list[0]
-        tensor_list = [torch.tensor([[value]]) for value in token_ids_list]
-        
+        # encoded_inputs = {k: v.to(self.device) for k, v in encoded_inputs.items()}
+
         # Get the embeddings
-        embeds = []
-        self.model.eval()
-        for index, tensor in enumerate(tensor_list):
-            embed = self.model(tensor, output_hidden_states=True).hidden_states[-1][:,0,:].detach().cpu().numpy()
-            embeds.append(embed)
-
+        with torch.no_grad():
+            embeddings = self.model(encoded_text['input_ids'])
+        
+        # Get the last hidden state
+        embeddings = embeddings['logits']
+        
+        embeddings = torch.sum(torch.log(1+torch.relu(embeddings)) * encoded_text['attention_mask'].unsqueeze(-1), dim=1)
+        
         # Return the embeddings
-        return embeds
+        return embeddings
 
-
-    
-    # Initialize the corpus using a dictionary or pandas DataFrame or HuggingFace Datasets object
-    def initialize_corpus(self,
-        corpus: Union[Dict[str, List[str]], pd.DataFrame, Dataset],
-        section: str = 'text',
-        index_column_name: str = 'embeddings',
-        embedding_type: str = 'last_hidden_state',
-        batch_size: Optional[int] = None,
-        num_workers: Optional[int] = None,
-        save_path: Optional[str] = None,
-    ) -> Dataset:
-        """
-        This function initializes a dataset using a dictionary or pandas DataFrame or HuggingFace Datasets object.
-
-        Arguments:
-            dataset_dict (Dict[str, List[str]]): The dataset dictionary.
-            section (str): The section of the dataset to use whose embeddings will be used for semantic search (e.g., 'text', 'title', etc.) (default: 'text').
-            index_column_name (str): The name of the column containing the embeddings (default: 'embeddings')
-            embedding_type (str): The type of embedding to use (default: 'last_hidden_state').
-            batch_size (int, optional): The batch size to use (default: 8).
-            max_length (int, optional): The maximum length of the input sequences.
-            num_workers (int, optional): The number of workers to use.
-            save_path (Optional[str], optional): The path to save the dataset (default: None).
-
-        Returns:
-            Dataset: The dataset object (HuggingFace Datasets).
-
-        Raises:
-            ValueError: If the dataset is not a dictionary or pandas DataFrame or HuggingFace Datasets object.
-        """
-
-        # corpus = { 'text': [...] } -> form_dict
-        
-        # Set the embedding_type
-        self.embedding_type = embedding_type
-
-        # get embedding dict
-        embedding_dict = self.get_doc_embeddings(text=corpus, embedding_type=self.embedding_type)
-
-        data = {
-                'text' : embedding_dict.values(),
-                'embeddings': []
-                }
-
-        for embed in embedding_dict.keys():
-            embed_list = embed.tolist()
-            data['embeddings'].append(embed_list[0])
-
-        
-        if isinstance(data, dict):
-            self.dataset = Dataset.from_dict(data)
-        elif isinstance(data, pd.DataFrame):
-            self.dataset = Dataset.from_pandas(data)
-        elif isinstance(data, Dataset):
-            self.dataset = corpus
-        else:
-            raise ValueError('The dataset must be a dictionary or pandas DataFrame.')
-        
-        # Save the dataset
-        if save_path is not None:
-            self.dataset.to_json(save_path)
-        
-        # Add FAISS index
-        self.add_faiss_index(
-            column_name=index_column_name,
-        )
-
-        # Return the dataset
-        return self.dataset
-
-
-
-    # Search for the most similar elements in the dataset, given a query
-    def search(self,
-        query: str,
-        k: int = 1,
-        index_column_name: str = 'embeddings',
-    ) -> pd.DataFrame:
-        """
-        This function searches for the most similar elements in the dataset, given a query.
-
-        Arguments:
-            query (str): The query.
-            k (int, optional): The number of elements to return  (default: 1).
-            index_column_name (str, optional): The name of the column containing the embeddings (default: 'embeddings')
-
-        Returns:
-            pd.DataFrame: The most similar elements in the dataset (text, score, etc.), sorted by score.
-
-        Remarks:
-            The returned elements are dictionaries containing the text and the score.
-        """
-
-
-        # Get the embeddings of the query
-        query_embeddings = self.get_query_embeddings([query], embedding_type=self.embedding_type)
-
-        # query_embedding이랑 self.dataset['embeddings'] 값 비교
-        scores = []
-        similar_elts = []
-        for query in query_embeddings:
-            # Search for the most similar elements in the dataset
-            score, similar_elt = self.dataset.get_nearest_examples(
-                index_name=index_column_name,
-                query=query,
-                k=k,
-            )
-            scores.append(score)
-            similar_elts.append(similar_elt)
-        
-        text_list = []
-        for item in similar_elts:
-            for text in item['text']:
-                text_list.append(text)
-        
-        flat_list = [sentence for sublist in text_list for sentence in sublist]
-        count = Counter(flat_list)
-        count = dict(count.most_common(5))
-        
-        sorted_dict = dict(sorted(count.items(), key=lambda x: x[1], reverse=True))
-
-        # Convert the results to a pandas DataFrame
-        results_df = pd.DataFrame({'text': sorted_dict.keys() , 'freq': sorted_dict.values()})
-        
-
-        # Return the most similar elements
-        return results_df

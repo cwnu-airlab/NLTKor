@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: nltkor
-Version: 1.2.15
+Version: 1.2.23
 Home-page: https://modi.changwon.ac.kr/air_cwnu/nlp_tool/nltk_ko.git
 Keywords: string matching,pattern matching,edit distance,string to string correction,string to string matching,Levenshtein edit distance,Hamming distance,Damerau-Levenshtein distance,Jaro-Winkler distance,longest common subsequence,longest common substring,dynamic programming,approximate string matching,semantic similarity,natural language processing,NLP,information retrieval,rouge,sacrebleu,bertscore,bartscore,fasttext,glove,cosine similarity,Smith-Waterman,Needleman-Wunsch,Hirschberg,Karp-Rabin,Knuth-Morris-Pratt,Boyer-Moore
 Classifier: Programming Language :: Python :: 3.7

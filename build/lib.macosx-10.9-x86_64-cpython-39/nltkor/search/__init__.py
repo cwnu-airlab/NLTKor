@@ -8,3 +8,4 @@ from .classical import (
 )
 from .faiss_search import FaissSearch
 from .kobert_tokenizer import KoBERTTokenizer
+from .trie_search import TRIESearch
