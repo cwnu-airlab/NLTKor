@@ -7,6 +7,7 @@
 
 
 import re
+import unicodedata
 
 #for Korean
 
@@ -16,6 +17,7 @@ class Enum(object):
 
 class Ko_tokenize():
 
+    @staticmethod
     def word(target, encoding='utf8'):
         """ Word Tokenizer
 
@@ -77,7 +79,7 @@ class Ko_tokenize():
         return buf.split()
 
 
-
+    @staticmethod
     def syllable(text,blank=False):
         """
         음절 토크나이저
@@ -97,7 +99,7 @@ class Ko_tokenize():
 
         return emjeol_list
 
-
+    @staticmethod
     def sentence(text):
         """
         문장 토크나이저
